@@ -41,7 +41,8 @@ it('resolves the current Telegram Wallet proposal as MTONGA with commit links on
     const proposal = document.querySelector('#proposal-list')!;
     expect(proposal.textContent).toContain('Add external-out for key rotation to Telegram Wallet');
     expect(proposal.textContent).toContain('MTONGA plan');
-    expect(proposal.textContent).toContain('encryptedPrevPrivateKey');
+    expect(proposal.querySelectorAll('.change-row')).toHaveLength(1);
+    expect(proposal.querySelector('.change-label')?.textContent).toBe('Shared contract bytecode');
     expect(proposal.textContent).toContain('different bytecode');
     expect(Array.from(proposal.querySelectorAll('.contract-code-source')).map((link) => link.getAttribute('href'))).toEqual([
         'https://github.com/ton-blockchain/tg-wallet-contract/commit/10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c',
