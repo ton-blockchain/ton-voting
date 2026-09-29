@@ -452,6 +452,7 @@
       }
 
       .summary {
+        white-space: pre-line;
         margin: 18px 0 0;
         color: var(--muted);
         line-height: 1.7;
@@ -1256,8 +1257,14 @@
         font-weight: 700;
       }
 
+      .change-box:has(> .contract-code-change) {
+        display: flex;
+        white-space: normal;
+      }
+
       .contract-code-change {
         display: flex;
+        flex: 1;
         min-width: 0;
         flex-direction: column;
         align-items: flex-start;
@@ -1281,6 +1288,7 @@
       }
 
       .contract-code-detail {
+        flex: 1;
         max-width: 48ch;
         color: var(--muted);
         font-size: 13px;

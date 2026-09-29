@@ -2,6 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { Cell } from '@ton/core';
 import { response, votingResponses } from './helpers/toncenter';
 
 const root = path.resolve(__dirname, '..');
@@ -26,6 +27,27 @@ beforeEach(() => {
 });
 
 afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
+
+it('resolves the current Telegram Wallet proposal as MTONGA with commit links on both diff sides', async () => {
+    const fixture = votingResponses({
+        hash: 'b2b46e5dba3272e93c0cd2a3c812f6767010b6c4e596d1e673b607b3364809d3',
+        paramId: -123,
+        value: Cell.fromBoc(readFileSync(path.join(__dirname, 'fixtures/telegram-wallet-key-rotation.boc')))[0],
+        currentValue: Cell.fromBoc(readFileSync(path.join(__dirname, 'fixtures/telegram-wallet-rev00.boc')))[0],
+    });
+    window.fetch = jest.fn().mockResolvedValueOnce(response(fixture.account)).mockResolvedValueOnce(response(fixture.proposals));
+    window.eval(bundle);
+    await jest.advanceTimersByTimeAsync(1100);
+    const proposal = document.querySelector('#proposal-list')!;
+    expect(proposal.textContent).toContain('Add external-out for key rotation to Telegram Wallet');
+    expect(proposal.textContent).toContain('MTONGA plan');
+    expect(proposal.textContent).toContain('encryptedPrevPrivateKey');
+    expect(proposal.textContent).toContain('different bytecode');
+    expect(Array.from(proposal.querySelectorAll('.contract-code-source')).map((link) => link.getAttribute('href'))).toEqual([
+        'https://github.com/ton-blockchain/tg-wallet-contract/commit/10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c',
+        'https://github.com/ton-blockchain/tg-wallet-contract/commit/355c5f3beb1f5129902c4a72e2cecaeac985af29',
+    ]);
+});
 
 it('renders client-side data, keeps it on 429 and recovers automatically', async () => {
     const fixture = votingResponses();

@@ -1,4 +1,6 @@
 import { beginCell, Cell, Dictionary } from '@ton/core';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { buildConfigChangeRows, getProposalSource } from '../dashboard/mainnetVoting';
 
 function cellFromBase64(boc: string): Cell {
@@ -94,6 +96,7 @@ describe('voting dashboard config diffs', () => {
 
   it('recognizes the latest config proposals as MTONGA proposals', () => {
     const hashes = [
+      'b2b46e5dba3272e93c0cd2a3c812f6767010b6c4e596d1e673b607b3364809d3',
       'cea2327f6b84fca2afb616ed45c042350b80106ece94e5530dac72cbb03b1b98',
       'e5e148027499276e65c48749129ca014bb4e53279b1ac6314d124f4e30166076'
     ];
@@ -120,15 +123,35 @@ describe('voting dashboard config diffs', () => {
           kind: 'contract-code',
           stage: 'Param after',
           title: 'Telegram Wallet · WalletTg',
-          detail: 'Shared contract bytecode loaded by Telegram Wallet contracts from config[-123].',
+          detail: 'WalletTg revision 00: shared contract code in config[-123], without external-out key rotation events.',
           codeHash: '6f177fd863213d7bd3b24a694b0b7efb7425721ed1d21490d052ae93276c4406',
           source: {
-            label: 'View WalletTg source on GitHub',
-            url: 'https://github.com/ton-blockchain/tg-wallet-contract/blob/master/contracts/WalletTg/WalletTg.tolk'
+            label: 'View commit · 10a0d2b',
+            url: 'https://github.com/ton-blockchain/tg-wallet-contract/commit/10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c'
           }
         }
       }
     ]);
+  });
+
+  it('describes the live key rotation payload and pins both commit links with the source mismatch disclosed', () => {
+    const proposed = Cell.fromBoc(readFileSync(path.join(__dirname, 'fixtures/telegram-wallet-key-rotation.boc')))[0];
+    expect(proposed.hash().toString('hex')).toBe('e30911420bef1191c09dce58b9df2b4ca4c2d9c383cc3b6a91170349ffa70e2c');
+    const rows = buildConfigChangeRows(-123, proposedParamMinus123, proposed);
+    expect(rows[0].current).toMatchObject({ source: {
+      url: 'https://github.com/ton-blockchain/tg-wallet-contract/commit/10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c'
+    } });
+    expect(rows[0].proposed).toMatchObject({
+      detail: expect.stringContaining('different bytecode'),
+      source: {
+        label: 'Related commit · 355c5f3',
+        url: 'https://github.com/ton-blockchain/tg-wallet-contract/commit/355c5f3beb1f5129902c4a72e2cecaeac985af29'
+      }
+    });
+    expect(rows).toHaveLength(1);
+    const unknownRows = buildConfigChangeRows(-123, proposedParamMinus123, beginCell().storeUint(42, 8).endCell());
+    expect(unknownRows).toHaveLength(1);
+    expect(unknownRows[0].proposed).toMatchObject({ source: undefined });
   });
 
   it('renders the accepted leader-window proposal as a focused config diff', () => {

@@ -9,7 +9,7 @@ const tuple = (...elements: unknown[]) => ({ '@type': 'tvm.stackEntryTuple', tup
 const list = (...elements: unknown[]) => ({ '@type': 'tvm.stackEntryList', list: { '@type': 'tvm.list', elements } });
 const cell = (value: Cell) => ({ '@type': 'tvm.stackEntryCell', cell: { '@type': 'tvm.cell', bytes: value.toBoc().toString('base64') } });
 
-export function votingResponses() {
+export function votingResponses(override?: { hash: string, paramId: number, value: Cell, currentValue?: Cell }) {
     const rules = beginCell().storeUint(0x36, 8)
         .storeUint(2, 8).storeUint(3, 8).storeUint(2, 8).storeUint(1, 8)
         .storeUint(60, 32).storeUint(3600, 32).storeUint(1, 32).storeUint(1, 32).endCell();
@@ -24,12 +24,13 @@ export function votingResponses() {
     config.set(15, beginCell().storeUint(1000, 32).storeUint(100, 32).storeUint(10, 32).storeUint(100, 32).endCell());
     config.set(16, beginCell().storeUint(2, 16).storeUint(1, 16).storeUint(1, 16).endCell());
     config.set(34, vset);
+    if (override?.currentValue) config.set(override.paramId, override.currentValue);
     const data = beginCell().storeRef(beginCell().storeDictDirect(config)).endCell();
-    const value = beginCell().storeUint(0xc4, 8).storeUint(15, 32).storeUint(1006n, 64).endCell();
+    const value = override?.value ?? beginCell().storeUint(0xc4, 8).storeUint(15, 32).storeUint(1006n, 64).endCell();
     // A full 256-bit hash and a negative integer must survive JSON decoding.
-    const hash = (1n << 255n) + 42n;
+    const hash = override ? BigInt(`0x${override.hash}`) : (1n << 255n) + 42n;
     const proposal = tuple(number(hash), tuple(
-        number(1_790_100_000), number(-1), tuple(number(8), cell(value), number(0)),
+        number(1_790_100_000), number(-1), tuple(number(override?.paramId ?? 8), cell(value), number(0)),
         number(BigInt(`0x${vset.hash().toString('hex')}`)), list(number(0)),
         number(25), number(2), number(0), number(0),
     ));

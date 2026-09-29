@@ -365,7 +365,17 @@ const MAINNET_CONFIG_ADDRESS = Address.parse('Ef9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 const ACTONSCAN_URL = 'https://actonscan.com';
 const ACTONSCAN_CONFIG_URL = `${ACTONSCAN_URL}/config`;
 const TELEGRAM_WALLET_REV00_CODE_HASH = '6f177fd863213d7bd3b24a694b0b7efb7425721ed1d21490d052ae93276c4406';
-const TELEGRAM_WALLET_REV00_SOURCE_URL = 'https://github.com/ton-blockchain/tg-wallet-contract/blob/master/contracts/WalletTg/WalletTg.tolk';
+const TELEGRAM_WALLET_REV00_COMMIT = '10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c';
+// PR #4 describes the change, but its published BOC does not match the live payload.
+const TELEGRAM_WALLET_KEY_ROTATION_RELATED_COMMIT = '355c5f3beb1f5129902c4a72e2cecaeac985af29';
+const TELEGRAM_WALLET_KEY_ROTATION_CODE_HASH = 'e30911420bef1191c09dce58b9df2b4ca4c2d9c383cc3b6a91170349ffa70e2c';
+const TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH = 'b2b46e5dba3272e93c0cd2a3c812f6767010b6c4e596d1e673b607b3364809d3';
+const PROPOSAL_DESCRIPTIONS: Record<string, { title: string, summary: string }> = {
+    [TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH]: {
+        title: 'Add external-out for key rotation to Telegram Wallet',
+        summary: 'Minor update, adding external-out event for key rotation in Telegram Wallet. Also we are testing that bytecode update via config works as expected.'
+    }
+};
 type SimplexNoncriticalParam = {
     label: string,
     kind: 'milliseconds' | 'float32' | 'bytes_per_second' | 'count',
@@ -423,6 +433,7 @@ const PARAM_DESCRIPTIONS: Record<number, string> = {
 
 const LAST_KNOWN_PROPOSAL_HASH = 'ea1c88dac0a979fa5c4f52037418d8f77f8ef08a73278809bd5879af4c58004f';
 const MTONGA_PROPOSAL_HASHES = [
+    TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH,
     'cea2327f6b84fca2afb616ed45c042350b80106ece94e5530dac72cbb03b1b98',
     'e5e148027499276e65c48749129ca014bb4e53279b1ac6314d124f4e30166076',
     '1abefa459593ee1eb5dffc43d2d671dfbc27b451fafc19651bde057e2a0f52bc',
@@ -633,6 +644,7 @@ export async function fetchMainnetVotingSnapshot(client: ToncenterClient = tonce
     const activeProposalHashes = new Set(proposals.map((proposal) => toHex(proposal.proposalHash)));
     const activeProposals = proposals.map((proposal) => {
         const hash = toHex(proposal.proposalHash);
+        const description = PROPOSAL_DESCRIPTIONS[hash];
         const yesWeight = thresholdWeight - proposal.weight_remaining;
         const neededWeight = proposal.weight_remaining > 0n ? proposal.weight_remaining : 0n;
         const rule = proposal.critical ? voteSetup.critical : voteSetup.normal;
@@ -647,7 +659,7 @@ export async function fetchMainnetVotingSnapshot(client: ToncenterClient = tonce
         return {
             hash,
             paramId: proposal.param_id,
-            paramLabel: PARAM_LABELS[proposal.param_id] ?? `Config param ${proposal.param_id}`,
+            paramLabel: description?.title ?? PARAM_LABELS[proposal.param_id] ?? `Config param ${proposal.param_id}`,
             source: getProposalSource(hash),
             critical: proposal.critical,
             expiresAt: proposal.expires,
@@ -670,7 +682,7 @@ export async function fetchMainnetVotingSnapshot(client: ToncenterClient = tonce
             wins: proposal.wins,
             losses: proposal.losses,
             rule,
-            summary: PARAM_DESCRIPTIONS[proposal.param_id] ?? buildSummary({
+            summary: description?.summary ?? PARAM_DESCRIPTIONS[proposal.param_id] ?? buildSummary({
                 critical: proposal.critical,
                 paramLabel: PARAM_LABELS[proposal.param_id] ?? `config param ${proposal.param_id}`,
                 voterCount: proposal.voters.length,
@@ -981,15 +993,9 @@ export function buildConfigChangeRows(paramId: number, current: Cell | undefined
 }
 
 function buildTelegramWalletContractChangeRows(current: Cell | null, proposed: Cell): ChangeRow[] {
+    const currentHash = current?.hash().toString('hex');
     const proposedHash = proposed.hash().toString('hex');
-    const source = proposedHash === TELEGRAM_WALLET_REV00_CODE_HASH
-        ? {
-            label: 'View WalletTg source on GitHub',
-            url: TELEGRAM_WALLET_REV00_SOURCE_URL
-        }
-        : undefined;
-
-    return [
+    const rows: ChangeRow[] = [
         {
             label: 'Shared contract bytecode',
             current: current
@@ -997,8 +1003,9 @@ function buildTelegramWalletContractChangeRows(current: Cell | null, proposed: C
                     kind: 'contract-code',
                     stage: 'Param before',
                     title: 'Existing WalletTg bytecode',
-                    detail: 'The contract code currently stored in config[-123].',
-                    codeHash: current.hash().toString('hex')
+                    detail: describeTelegramWalletCode(currentHash!),
+                    codeHash: currentHash,
+                    source: telegramWalletCodeSource(currentHash!)
                 }
                 : {
                     kind: 'contract-code',
@@ -1010,12 +1017,40 @@ function buildTelegramWalletContractChangeRows(current: Cell | null, proposed: C
                 kind: 'contract-code',
                 stage: 'Param after',
                 title: 'Telegram Wallet · WalletTg',
-                detail: 'Shared contract bytecode loaded by Telegram Wallet contracts from config[-123].',
+                detail: describeTelegramWalletCode(proposedHash),
                 codeHash: proposedHash,
-                source
+                source: telegramWalletCodeSource(proposedHash)
             }
         }
     ];
+
+    return rows;
+}
+
+function describeTelegramWalletCode(codeHash: string): string {
+    if (codeHash === TELEGRAM_WALLET_REV00_CODE_HASH) {
+        return 'WalletTg revision 00: shared contract code in config[-123], without external-out key rotation events.';
+    }
+    if (codeHash === TELEGRAM_WALLET_KEY_ROTATION_CODE_HASH) {
+        return 'Adds external-out key rotation events to the shared WalletTg code in config[-123]. The related commit below uses a different event tag and produces different bytecode from this proposal.';
+    }
+    return 'Shared contract bytecode loaded by Telegram Wallet contracts from config[-123].';
+}
+
+function telegramWalletCodeSource(codeHash: string): ContractCodeChangeValue['source'] {
+    if (codeHash === TELEGRAM_WALLET_REV00_CODE_HASH) {
+        return {
+            label: `View commit · ${TELEGRAM_WALLET_REV00_COMMIT.slice(0, 7)}`,
+            url: `https://github.com/ton-blockchain/tg-wallet-contract/commit/${TELEGRAM_WALLET_REV00_COMMIT}`
+        };
+    }
+    if (codeHash === TELEGRAM_WALLET_KEY_ROTATION_CODE_HASH) {
+        return {
+            label: `Related commit · ${TELEGRAM_WALLET_KEY_ROTATION_RELATED_COMMIT.slice(0, 7)}`,
+            url: `https://github.com/ton-blockchain/tg-wallet-contract/commit/${TELEGRAM_WALLET_KEY_ROTATION_RELATED_COMMIT}`
+        };
+    }
+    return undefined;
 }
 
 function getRequiredParam(configDict: MapLikeConfig, id: number): Cell {
