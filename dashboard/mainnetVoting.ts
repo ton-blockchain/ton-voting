@@ -370,10 +370,20 @@ const TELEGRAM_WALLET_REV00_COMMIT = '10a0d2b9e87bd0a5e9135c2431e3eb15c6a0485c';
 const TELEGRAM_WALLET_KEY_ROTATION_RELATED_COMMIT = '355c5f3beb1f5129902c4a72e2cecaeac985af29';
 const TELEGRAM_WALLET_KEY_ROTATION_CODE_HASH = 'e30911420bef1191c09dce58b9df2b4ca4c2d9c383cc3b6a91170349ffa70e2c';
 const TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH = 'b2b46e5dba3272e93c0cd2a3c812f6767010b6c4e596d1e673b607b3364809d3';
+const GLOBAL_VERSION_16_PROPOSAL_HASH = 'c76df2ce06ee3fad566f2f6268fe3f4aa658a1292e588746e772f39bf805133a';
+const PROTOCOL_VERSION_2_PROPOSAL_HASH = 'aa9f20b2ee37c78406e0201fb0f2367aee302fd02f643b37ba84cc47dcceaf3c';
 const PROPOSAL_DESCRIPTIONS: Record<string, { title: string, summary: string }> = {
     [TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH]: {
         title: 'Add external-out for key rotation to Telegram Wallet',
         summary: 'Minor update, adding external-out event for key rotation in Telegram Wallet. Also we are testing that bytecode update via config works as expected.'
+    },
+    [GLOBAL_VERSION_16_PROPOSAL_HASH]: {
+        title: 'Global version 16',
+        summary: 'Raises the global network version to 16 as the first part of activating automatic global balance verification.'
+    },
+    [PROTOCOL_VERSION_2_PROPOSAL_HASH]: {
+        title: 'Protocol version 2',
+        summary: 'Upgrades the consensus protocol to version 2, enabling the public overlay to switch to Plumtree block broadcasts. Plumtree is expected to improve block delivery even when the public overlay contains a large number of misbehaving nodes.'
     }
 };
 type SimplexNoncriticalParam = {
@@ -434,6 +444,8 @@ const PARAM_DESCRIPTIONS: Record<number, string> = {
 const LAST_KNOWN_PROPOSAL_HASH = 'ea1c88dac0a979fa5c4f52037418d8f77f8ef08a73278809bd5879af4c58004f';
 const MTONGA_PROPOSAL_HASHES = [
     TELEGRAM_WALLET_KEY_ROTATION_PROPOSAL_HASH,
+    GLOBAL_VERSION_16_PROPOSAL_HASH,
+    PROTOCOL_VERSION_2_PROPOSAL_HASH,
     'cea2327f6b84fca2afb616ed45c042350b80106ece94e5530dac72cbb03b1b98',
     'e5e148027499276e65c48749129ca014bb4e53279b1ac6314d124f4e30166076',
     '1abefa459593ee1eb5dffc43d2d671dfbc27b451fafc19651bde057e2a0f52bc',

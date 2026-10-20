@@ -96,6 +96,8 @@ describe('voting dashboard config diffs', () => {
 
   it('recognizes the latest config proposals as MTONGA proposals', () => {
     const hashes = [
+      'c76df2ce06ee3fad566f2f6268fe3f4aa658a1292e588746e772f39bf805133a',
+      'aa9f20b2ee37c78406e0201fb0f2367aee302fd02f643b37ba84cc47dcceaf3c',
       'b2b46e5dba3272e93c0cd2a3c812f6767010b6c4e596d1e673b607b3364809d3',
       'cea2327f6b84fca2afb616ed45c042350b80106ece94e5530dac72cbb03b1b98',
       'e5e148027499276e65c48749129ca014bb4e53279b1ac6314d124f4e30166076'
